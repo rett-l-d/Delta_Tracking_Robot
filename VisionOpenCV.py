@@ -175,13 +175,13 @@ def getOpenCVresults(shared, queue_lock, object_queue):
                     })
 
             #     # Save annotated snapshot
-            #     output = img.copy()
-            #     cv2.drawContours(output, [approx], -1, (0, 255, 0), 2)
-            #     cv2.circle(output, (cx_px, cy_px), 5, (0, 0, 255), -1)
+                # output = img.copy()
+                # cv2.drawContours(output, [approx], -1, (0, 255, 0), 2)
+                # cv2.circle(output, (cx_px, cy_px), 5, (0, 0, 255), -1)
 
-            #     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
-            #     save_path = f"{SAVE_DIR}detection_{timestamp}.png"
-            #     cv2.imwrite(save_path, output)
+                # timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+                # save_path = f"{SAVE_DIR}detection_{timestamp}.png"
+                # cv2.imwrite(save_path, output)
 
             # print(len(object_queue))
 

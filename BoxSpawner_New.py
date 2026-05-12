@@ -94,6 +94,41 @@ def spawn_box():
     RDK.Render(True)
     return new_box
 
+def delete_boxes():
+
+    DELETE_DISTANCE = 100
+
+    delete_frame = RDK.Item('delete_box_frame', robolink.ITEM_TYPE_FRAME)
+
+    if not delete_frame.Valid():
+        print("delete_box_frame not found")
+        return
+
+    for box in box_queue[:]:
+
+        if not box.Valid(True):
+            if box in box_queue:
+                box_queue.remove(box)
+            continue
+
+        # Box pose relative to delete frame
+        pose_rel = robomath.invH(delete_frame.PoseAbs()) * box.PoseAbs()
+
+        pos = pose_rel.Pos()
+
+        x = pos[0]
+
+        
+        # IMPORTANT:
+        # you may need x < -DELETE_DISTANCE
+        # depending on conveyor direction
+
+        if x > DELETE_DISTANCE:
+
+           
+
+            box_queue.remove(box)
+            box.Delete()
 
 
 #while True:
@@ -101,7 +136,7 @@ box_queue = conveyor_frame.Childs()
 def create_boxes():
 
     while True:
-        time.sleep(2)
+        time.sleep(5)
     
         # Remove boxes removed from the conveyor, deleted or too far away
         childs = conveyor_frame.Childs()
@@ -116,3 +151,5 @@ def create_boxes():
         # Spawn new boxes if space is sufficient
         if box_queue[-1].Valid(True) and not RDK.Collision(ref_box, box_queue[-1]):
             box_queue.append(spawn_box())
+        
+        delete_boxes()
