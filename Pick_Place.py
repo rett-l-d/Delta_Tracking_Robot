@@ -163,7 +163,7 @@ def pick_and_place(box):
 object_queue = []
 tracked_objects = []
 queue_lock   = threading.Lock()
-SCALE = 15.2  # mm per encoder unit
+SCALE = 100  # mm per encoder unit
 
 def get_current_x(obj, encoder):
     """Real-time X position of object based on encoder delta since detection."""
