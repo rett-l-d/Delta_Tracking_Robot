@@ -15,7 +15,7 @@ CAMERA_OFFSET   = 747.0     # mm upstream from robot pick point
 PICK_WINDOW_MM  = 100      # ±mm around pick point where robot can reach
 CONVEYOR_SPEED = 300        # mm/s, adjust to your conveyor speed
 #Joints_home = [65.566661, 65.566661, 65.566661, 0.000000]
-Joints_home = [-39.94, -39.94, -39.94, 0.000000]
+Joints_home = [15.40, 15.40, 15.40, 0.000000]
 
 shared = {
     'encoder_value': 0
@@ -64,6 +64,15 @@ if not conveyor.Valid():
 print(f'Using conveyor: {conveyor.Name()}')
 conveyor_min, conveyor_max, _ = conveyor.JointLimits()
 conveyor_max = conveyor_max.list()[0]
+
+# Get the conveyor's reference frame
+frames = [x for x in conveyor.Childs() if x.Type() == robolink.ITEM_TYPE_FRAME]
+if not frames:
+    frames = [RDK.AddFrame(conveyor.Name() + ' Frame', conveyor)]
+conveyor_frame = RDK.ItemUserPick(itemtype_or_list=frames) if len(frames) > 1 else frames[0]
+if not conveyor_frame.Valid():
+    quit()
+print(f'Using conveyor frame: {conveyor_frame.Name()}')
 
 # -----------------------------
 # GET ROBOT
@@ -258,7 +267,7 @@ def pick_loop():
     time_last = 0
     delta_t = 0
     pick_timestamps = []
-
+    
     while True:
 
         time.sleep(0.1)
@@ -309,7 +318,7 @@ def pick_loop():
                 [ 0.000, -1.000, 0.000, y_pick ],
                 [ 0.000, -0.000, -1.000, -1155.000 ],
                 [ 0.000, 0.000, 0.000, 1.000 ]])
-            robot.MoveJ(pick_pose)
+            robot.MoveL(pick_pose)
             actual_delay = time.time() - start_move
             ROBOT_DELAY = 0.5 * ROBOT_DELAY + 0.1 * actual_delay
             tool.AttachClosest('Box')
@@ -334,16 +343,16 @@ def pick_loop():
         )
 
             # Lift
-            robot.MoveJ(Joints_home)
+            robot.MoveL(Joints_home)
 
             drop_pose = robomath.Mat([[ 1.000, 0.000, 0.000, 0.000 ],
                         [ 0.000, -1.000, 0.000, -220.000 ],
                         [ 0.000, -0.000, -1.000, -1155.000 ],
                         [ 0.000, 0.000, 0.000, 1.000 ]])
-            robot.MoveJ(drop_pose)
+            robot.MoveL(drop_pose)
           #  time.sleep(0.5)
 
-            robot.MoveJ(Joints_home)
+            robot.MoveL(Joints_home)
 
 
             #Delete the object attached to the tool instead of just detaching it
@@ -428,7 +437,42 @@ def pick_non_loop():
                 if "box" in child.Name().lower():
                     child.Delete()
 
+box_queue = conveyor_frame.Childs()
+def delete_boxes_end():
 
+    DELETE_DISTANCE = 100
+
+    delete_frame = RDK.Item('delete_box_frame', robolink.ITEM_TYPE_FRAME)
+
+    if not delete_frame.Valid():
+        print("delete_box_frame not found")
+        return
+
+    for box in box_queue[:]:
+
+        if not box.Valid(True):
+            if box in box_queue:
+                box_queue.remove(box)
+            continue
+
+        # Box pose relative to delete frame
+        pose_rel = robomath.invH(delete_frame.PoseAbs()) * box.PoseAbs()
+
+        pos = pose_rel.Pos()
+
+        x = pos[0]
+
+        
+        # IMPORTANT:
+        # you may need x < -DELETE_DISTANCE
+        # depending on conveyor direction
+
+        if x > DELETE_DISTANCE:
+
+           
+            if box in box_queue:
+                box_queue.remove(box)
+                box.Delete()
 
 
 
@@ -443,14 +487,17 @@ conveyor.setJoints(conveyor_min)
 robot.MoveJ(Joints_home)
 
  #set robot speed
-robot.setSpeed(8000, 4000) 
-robot.setAcceleration(50000)
+robot.setSpeed(500, 3000) 
+robot.setAcceleration(5000)
+
+
 
 shared['encoder_value'] = 0
 
 threading.Thread(target=get_x_prediction, daemon=True).start()
 threading.Thread(target=pick_loop, daemon=True).start()
 threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
+#threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
 
 threading.Thread(target=calculate_speed, daemon=True).start()
 threading.Thread(
@@ -460,7 +507,7 @@ threading.Thread(
 ).start()
 
 #BoxSpawner_New.create_boxes()
-dt = 0.01
+dt = 0.5
 
 conveyor.setSpeed(CONVEYOR_SPEED)
 
@@ -468,6 +515,7 @@ conveyor.setSpeed(CONVEYOR_SPEED)
 while True:
 
     time.sleep(dt)
+    delete_boxes_end()
     #sensorReady.sensor_ready()
 
     # spawn every 1 second

@@ -13,7 +13,7 @@ RANDOMIZE_SIZE = True
 SIZE_RANGE_FACTOR = [1, 1]  # %/100, minimum and maximum scale
 
 RANDOMIZE_ROTATION = True
-ROTATION_MAX = 20  # degrees, maximum rotation along reference Z (+/-)
+ROTATION_MAX = 45  # degrees, maximum rotation along reference Z (+/-)
 
 RANDOMIZE_POSITION = True
 POSITION_MAX = 100  # mm, maximum lateral offset (+/-)
@@ -64,34 +64,54 @@ print(f'Using conveyor frame: {conveyor_frame.Name()}')
 
 def spawn_box():
 
-    # Copy/paste changes the user selection
-    RDK.Render(False)
+    # Preserve selection (optional safety)
     selection = RDK.Selection()
+
+    # Copy reference object
     ref_box.Copy(copy_children=False)
     new_box = ref_box.Parent().Paste()
+
+    # Restore selection
     RDK.setSelection(selection)
+
     new_box.setVisible(False)
     new_box.setName('Box')
 
-    pose = new_box.Pose()
+    # IMPORTANT: use reference pose (NOT pasted object pose)
+    pose = ref_box.Pose()
+
+    # Random size
     if RANDOMIZE_SIZE:
-        scale = random.uniform(SIZE_RANGE_FACTOR[0], SIZE_RANGE_FACTOR[1])
+        scale = random.uniform(
+            SIZE_RANGE_FACTOR[0],
+            SIZE_RANGE_FACTOR[1]
+        )
         new_box.Scale(scale)
 
+    # Random lateral offset
     if RANDOMIZE_POSITION:
-        lateral_offset = random.uniform(-POSITION_MAX, POSITION_MAX)  # Assuming reference frame has Y crossing the conveyor's width
+        lateral_offset = random.uniform(
+            -POSITION_MAX,
+            POSITION_MAX
+        )
         pose = robomath.RelTool(pose, 0, lateral_offset, 0)
 
+    # Random rotation
     if RANDOMIZE_ROTATION:
-        rotation = random.uniform(-ROTATION_MAX, ROTATION_MAX)
+        rotation = random.uniform(
+            -ROTATION_MAX,
+            ROTATION_MAX
+        )
         pose = robomath.RelTool(pose, 0, 0, 0, 0, 0, rotation)
 
+    # Apply pose
     new_box.setPose(pose)
-    RDK.Render(False)  # Update pose
 
+    # Attach to conveyor (no Render calls here!)
     new_box.setParentStatic(conveyor_frame)
+
     new_box.setVisible(True)
-    RDK.Render(True)
+
     return new_box
 
 def delete_boxes():
@@ -126,9 +146,9 @@ def delete_boxes():
         if x > DELETE_DISTANCE:
 
            
-
-            box_queue.remove(box)
-            box.Delete()
+            if box in box_queue:
+                box_queue.remove(box)
+                box.Delete()
 
 
 #while True:
@@ -136,13 +156,14 @@ box_queue = conveyor_frame.Childs()
 def create_boxes():
 
     while True:
-        time.sleep(0.2)
+        time.sleep(0.1)
     
         # Remove boxes removed from the conveyor, deleted or too far away
         childs = conveyor_frame.Childs()
         for box in box_queue:
             if not box.Valid(True) or box not in childs:
-                box_queue.remove(box)
+                if box in box_queue:
+                    box_queue.remove(box)
 
         if not box_queue:
             box_queue.append(spawn_box())
@@ -152,4 +173,4 @@ def create_boxes():
         if box_queue[-1].Valid(True) and not RDK.Collision(ref_box, box_queue[-1]):
             box_queue.append(spawn_box())
         
-        delete_boxes()
+       # delete_boxes()
