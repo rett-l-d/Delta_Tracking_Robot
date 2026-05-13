@@ -40,6 +40,19 @@ if not sensor.Valid():
 SENSOR_IO = sensor.Name()
 print(f'Using laser sensor: {SENSOR_IO}')
 
+
+start_proxs = [x for x in RDK.ItemList(robolink.ITEM_TYPE_OBJECT) if 'start_prox' in x.Name().lower()]
+if not start_proxs:
+    RDK.ShowMessage('No sensor found. Please add a sensor object with "sensor" in its name, i.e. "Laser Sensor"')
+    quit()
+start_prox = RDK.ItemUserPick(itemtype_or_list=start_proxs) if len(start_proxs) > 1 else start_proxs[0]
+if not start_prox.Valid():
+    quit()
+START_PROX = start_prox.Name()
+print(f'Using laser sensor: {START_PROX}')
+
+
+
 #---------------------------------------
 # Enable the sensor item
 if USE_SENSOR_PLUGIN:
@@ -80,5 +93,15 @@ def sensor_ready():
         if box.Valid(True) and RDK.Collision(sensor, box):
             detection = 1
             break
-
+    
     RDK.setParam(SENSOR_IO, detection)
+
+
+    start_detection = 0
+    childs = conveyor_frame.Childs()
+    for box in [x for x in childs if x.Type() == robolink.ITEM_TYPE_OBJECT]:
+        if box.Valid(True) and RDK.Collision(start_prox, box):
+            start_detection = 1
+            break
+    
+    RDK.setParam(START_PROX, start_detection)

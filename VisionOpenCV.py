@@ -77,7 +77,7 @@ def getOpenCVresults(shared, queue_lock, object_queue):
         # if abs(encoder_now - last_encoder) < 5:
         #     continue
 
-        time.sleep(0.02)
+        time.sleep(0.25)
  
         RDK.Cam2D_Snapshot(SNAPSHOT_PATH, cam)
         img = cv2.imread(SNAPSHOT_PATH)
@@ -118,12 +118,13 @@ def getOpenCVresults(shared, queue_lock, object_queue):
 
             if touching_edge:
               #  print("Partial rectangle rejected")
+              
                 continue
 
             peri = cv2.arcLength(best, True)
             approx = cv2.approxPolyDP(best, 0.04 * peri, True)
 
-            if len(approx) < 4 or len(approx) > 6:
+            if len(approx) < 4 or len(approx) > 10:
                 print("Not rectangle-like")
                 continue
             
@@ -175,13 +176,13 @@ def getOpenCVresults(shared, queue_lock, object_queue):
                     })
 
             #     # Save annotated snapshot
-                # output = img.copy()
-                # cv2.drawContours(output, [approx], -1, (0, 255, 0), 2)
-                # cv2.circle(output, (cx_px, cy_px), 5, (0, 0, 255), -1)
+                output = img.copy()
+                cv2.drawContours(output, [approx], -1, (0, 255, 0), 2)
+                cv2.circle(output, (cx_px, cy_px), 5, (0, 0, 255), -1)
 
-                # timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
-                # save_path = f"{SAVE_DIR}detection_{timestamp}.png"
-                # cv2.imwrite(save_path, output)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+                save_path = f"{SAVE_DIR}detection_{timestamp}.png"
+                cv2.imwrite(save_path, output)
 
             # print(len(object_queue))
 
