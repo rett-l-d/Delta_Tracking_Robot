@@ -156,7 +156,7 @@ box_queue = conveyor_frame.Childs()
 def create_boxes():
 
     while True:
-        time.sleep(0.1)
+        time.sleep(0.5)
     
         # Remove boxes removed from the conveyor, deleted or too far away
         childs = conveyor_frame.Childs()
