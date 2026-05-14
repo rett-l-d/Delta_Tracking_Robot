@@ -352,7 +352,7 @@ def pick_loop():
             robot.MoveL(drop_pose)
           #  time.sleep(0.5)
 
-            robot.MoveL(Joints_home)
+
 
 
             #Delete the object attached to the tool instead of just detaching it
@@ -360,6 +360,25 @@ def pick_loop():
                 if child.Type() == robolink.ITEM_TYPE_OBJECT:
                     if "box" in child.Name().lower():
                         child.Delete()
+
+            
+
+        #Delete the object attached to the tool instead of just detaching it
+        for child in tool.Childs():
+            if child.Type() == robolink.ITEM_TYPE_OBJECT:
+                if "box" in child.Name().lower():
+                    child.Delete()
+        with queue_lock:   
+            if len(object_queue) == 0:
+                #no object detected yet
+                robot.MoveL(Joints_home)
+                continue
+        
+        drop_pose = robomath.Mat([[ 1.000, 0.000, 0.000, 0.000 ],
+                    [ 0.000, -1.000, 0.000, -220.000 ],
+                    [ 0.000, -0.000, -1.000, -1100 ],
+                    [ 0.000, 0.000, 0.000, 1.000 ]])
+        robot.MoveL(drop_pose)
 
 
 def pick_non_loop():
@@ -428,7 +447,8 @@ def pick_non_loop():
         robot.MoveJ(drop_pose)
         #  time.sleep(0.5)
 
-        robot.MoveJ(Joints_home)
+    
+        
 
 
         #Delete the object attached to the tool instead of just detaching it
@@ -436,6 +456,18 @@ def pick_non_loop():
             if child.Type() == robolink.ITEM_TYPE_OBJECT:
                 if "box" in child.Name().lower():
                     child.Delete()
+        with queue_lock:   
+            if len(object_queue) == 0:
+                #no object detected yet
+                robot.MoveJ(Joints_home)
+                return
+        
+        drop_pose = robomath.Mat([[ 1.000, 0.000, 0.000, 0.000 ],
+                    [ 0.000, -1.000, 0.000, -220.000 ],
+                    [ 0.000, -0.000, -1.000, -1000 ],
+                    [ 0.000, 0.000, 0.000, 1.000 ]])
+        robot.MoveJ(drop_pose)
+        #  time.sleep(0.5)
 
 box_queue = conveyor_frame.Childs()
 def delete_boxes_end():
@@ -497,7 +529,7 @@ shared['encoder_value'] = 0
 threading.Thread(target=get_x_prediction, daemon=True).start()
 threading.Thread(target=pick_loop, daemon=True).start()
 threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
-#threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
+threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
 
 threading.Thread(target=calculate_speed, daemon=True).start()
 threading.Thread(
