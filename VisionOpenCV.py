@@ -77,7 +77,7 @@ def getOpenCVresults(shared, queue_lock, object_queue):
         # if abs(encoder_now - last_encoder) < 5:
         #     continue
 
-        time.sleep(0.25)
+        time.sleep(0.1)
  
         RDK.Cam2D_Snapshot(SNAPSHOT_PATH, cam)
         img = cv2.imread(SNAPSHOT_PATH)

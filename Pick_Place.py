@@ -185,11 +185,11 @@ tracked_objects = []
 queue_lock   = threading.Lock()
 x_predicted = 0
 SCALE = 1.95  # mm per encoder unit
-OFFSET = -100
+OFFSET = -720
 def get_current_x(obj, encoder):
     """Real-time X position of object based on encoder delta since detection."""
     encoder_delta = encoder - obj['encoder_at_detection']
-    return obj['x_at_detection'] + (encoder_delta * SCALE) + OFFSET
+    return obj['x_at_detection'] + (encoder_delta * SCALE) 
 
 
 def get_x_prediction():
@@ -197,7 +197,7 @@ def get_x_prediction():
     #global x_predicted
 
     while True:
-        time.sleep(0.002)
+        time.sleep(0.02)
         with queue_lock:   
             if len(object_queue) == 0:
                 #no object detected yet
@@ -205,9 +205,9 @@ def get_x_prediction():
     
             obj = object_queue[0]
 
-            global_pick_X['pick_x'] = get_current_x(obj, shared['encoder_value']) 
+            global_pick_X['pick_x'] = get_current_x(obj, shared['encoder_value'])  + OFFSET
         
-            #print(f"Predicted X={global_pick_X['pick_x']:.1f}mm")
+            print(f"Predicted X={global_pick_X['pick_x']:.1f}mm")
 
 
 def calculate_speed():
@@ -278,8 +278,8 @@ def pick_loop():
                 continue
        
             obj = object_queue[0]
-            #x_now = global_pick_X['pick_x']
-            x_now = get_current_x(obj, shared['encoder_value'])
+            x_now = global_pick_X['pick_x']
+            #x_now = get_current_x(obj, shared['encoder_value'])
         
         #x_future = x_now + speed * ROBOT_DELAY 
         
@@ -326,7 +326,24 @@ def pick_loop():
             # Attach box to tool
             now = time.time()
 
-            pick_timestamps.append(now)
+            tool.AttachClosest('Box')
+
+            attached = False
+
+            for child in tool.Childs():
+
+                if child.Type() == robolink.ITEM_TYPE_OBJECT:
+
+                    if "box" in child.Name().lower():
+
+                        attached = True
+                        break
+
+            if attached:
+                print("Pick success")
+                pick_timestamps.append(now)
+
+           
 
             # keep only picks from last 60 seconds
             pick_timestamps[:] = [
@@ -354,120 +371,26 @@ def pick_loop():
 
 
 
+            
 
             #Delete the object attached to the tool instead of just detaching it
             for child in tool.Childs():
                 if child.Type() == robolink.ITEM_TYPE_OBJECT:
                     if "box" in child.Name().lower():
                         child.Delete()
-
+            with queue_lock:   
+                if len(object_queue) == 0:
+                    #no object detected yet
+                    robot.MoveL(Joints_home)
+                    continue
             
-
-        #Delete the object attached to the tool instead of just detaching it
-        for child in tool.Childs():
-            if child.Type() == robolink.ITEM_TYPE_OBJECT:
-                if "box" in child.Name().lower():
-                    child.Delete()
-        with queue_lock:   
-            if len(object_queue) == 0:
-                #no object detected yet
-                robot.MoveL(Joints_home)
-                continue
-        
-        drop_pose = robomath.Mat([[ 1.000, 0.000, 0.000, 0.000 ],
-                    [ 0.000, -1.000, 0.000, -220.000 ],
-                    [ 0.000, -0.000, -1.000, -1100 ],
-                    [ 0.000, 0.000, 0.000, 1.000 ]])
-        robot.MoveL(drop_pose)
+            wait_pose = robomath.Mat([[ 1.000, 0.000, 0.000, 0.000 ],
+                        [ 0.000, -1.000, 0.000, -220.000 ],
+                        [ 0.000, -0.000, -1.000, -1100 ],
+                        [ 0.000, 0.000, 0.000, 1.000 ]])
+            robot.MoveL(wait_pose)
 
 
-def pick_non_loop():
-
-    global encoder_value
-    global last_encoder_value
-    x_future = None
-    speed = global_speed['speed']  # mm/s, adjust to your conveyor speed
-    ROBOT_DELAY = 0.5  # seconds from pick command to actual pick (adjust to your robot)
-
-  
-
-    # time.sleep(0.005)
-    #print(f"Encoder in pick loop: {encoder_value:.1f}")
-    #if encoder_value == last_encoder_value:
-     #   return  # avoid division by zero if encoder hasn't updated
-    #speed = (encoder_value - last_encoder_value) / dt
-    speed=200
-
-    with queue_lock:   
-        if len(object_queue) == 0:
-            #no object detected yet
-            return
-    
-        obj = object_queue[0]
-
-    x_now = get_current_x(obj, shared['encoder_value'])
-    x_future = x_now + speed * ROBOT_DELAY
-    #x_future = x_now
-    print(f"  Future X position: {x_future}")
-
-    # Object passed pick window — discard
-    if x_future> PICK_WINDOW_MM:
-        object_queue.pop(0)
-        print(f"  Object passed pick window — discarded")
-        return
-    
-    
-
-    # Object in pick window — pick it (MoveJ/MoveL are blocking)
-    if abs(x_future) <= PICK_WINDOW_MM:
-        obj = object_queue.pop(0)
-
-        x_pick = x_future
-        y_pick = obj['y_at_detection']
-
-        print(f"  PICKING at X={x_pick:.1f}mm  Y={y_pick:.1f}mm")
-
-        pick_pose = robomath.Mat([[ 1.000, 0.000, 0.000, x_pick ],
-            [ 0.000, -1.000, 0.000, y_pick ],
-            [ 0.000, -0.000, -1.000, -1155.000 ],
-            [ 0.000, 0.000, 0.000, 1.000 ]])
-        robot.MoveJ(pick_pose)
-        tool.AttachClosest('Box')
-        #time.sleep(0.5)
-        # Attach box to tool
-        
-
-        # Lift
-        robot.MoveJ(Joints_home)
-
-        drop_pose = robomath.Mat([[ 1.000, 0.000, 0.000, 0.000 ],
-                    [ 0.000, -1.000, 0.000, -220.000 ],
-                    [ 0.000, -0.000, -1.000, -1155 ],
-                    [ 0.000, 0.000, 0.000, 1.000 ]])
-        robot.MoveJ(drop_pose)
-        #  time.sleep(0.5)
-
-    
-        
-
-
-        #Delete the object attached to the tool instead of just detaching it
-        for child in tool.Childs():
-            if child.Type() == robolink.ITEM_TYPE_OBJECT:
-                if "box" in child.Name().lower():
-                    child.Delete()
-        with queue_lock:   
-            if len(object_queue) == 0:
-                #no object detected yet
-                robot.MoveJ(Joints_home)
-                return
-        
-        drop_pose = robomath.Mat([[ 1.000, 0.000, 0.000, 0.000 ],
-                    [ 0.000, -1.000, 0.000, -220.000 ],
-                    [ 0.000, -0.000, -1.000, -1000 ],
-                    [ 0.000, 0.000, 0.000, 1.000 ]])
-        robot.MoveJ(drop_pose)
-        #  time.sleep(0.5)
 
 box_queue = conveyor_frame.Childs()
 def delete_boxes_end():
@@ -521,17 +444,25 @@ robot.MoveJ(Joints_home)
  #set robot speed
 robot.setSpeed(500, 3000) 
 robot.setAcceleration(5000)
+robot.setRounding(5)
 
 
 
 shared['encoder_value'] = 0
 
 threading.Thread(target=get_x_prediction, daemon=True).start()
-threading.Thread(target=pick_loop, daemon=True).start()
-threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
-threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
-
+#threading.Thread(target=pick_loop, daemon=True).start()
 threading.Thread(target=calculate_speed, daemon=True).start()
+threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
+# time.sleep(0.5)
+# threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
+# time.sleep(0.5)
+# threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
+# time.sleep(0.5)
+# threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
+# time.sleep(0.5)
+#threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
+#threading.Thread(target=sensorReady.sensor_ready, daemon=True).start()
 threading.Thread(
     target=VisionOpenCV.getOpenCVresults,
     args=(shared, queue_lock, object_queue),
@@ -539,17 +470,16 @@ threading.Thread(
 ).start()
 
 #BoxSpawner_New.create_boxes()
-dt = 0.5
+dt = 0.01
 
 conveyor.setSpeed(CONVEYOR_SPEED)
-
 
 while True:
 
     time.sleep(dt)
     delete_boxes_end()
-    #sensorReady.sensor_ready()
-
+    #
+    sensorReady.sensor_ready()
     # spawn every 1 second
     # if time.time() - last_spawn_time >= 2:
     #  BoxSpawner_New.create_boxes()
@@ -562,10 +492,27 @@ while True:
     #print(f"Encoder value: {encoder_value:.1f}")
 
 
-
+   
     #lt = VisionOpenCV.getOpenCVresults(lt, encoder_value, queue_lock, object_queue)
-    
+    sensor_state = int(RDK.getParam(SENSOR_IO))
+    #print("Sensor STate:" , sensor_state)
+    if sensor_state == 1:
+        conveyor.Stop()
+        #encoder_end = shared['encoder_value']
+        #break
+        if len(object_queue) > 0:
+            obj= object_queue[0]
+            object_queue.pop(0)
+        #x_now = get_current_x(obj, shared['encoder_value'])
+        #if x_now > 300:
+      
+        time.sleep(3)
+        pass
+        target = [min(conveyor_max, conveyor.Joints().list()[0] + 99999)]  # this is to avoid lengthy calculations when the target is to far away (as oppose to conveyor.MoveJ(conveyor_max, False))
+        conveyor.MoveJ(target, False)
+       
 
+    #           #  print("Object removed")
     #pick_non_loop()
 
     with queue_lock:
@@ -580,11 +527,7 @@ while True:
             #     print("Would pick here (no stop)") 
             #     print(f"Predicted X={x_now:.1f}mm")
             
-    #         #if x_now > 100:
-
-    #          #   object_queue.pop(0)
-
-    #           #  print("Object removed")
+    #         
 
             #  print(
             #      f"X at Detection={obj['x_at_detection']:.1f}  "
@@ -599,7 +542,7 @@ while True:
 
 # print("Sensor:", sensor_state)
 # pick_loop(enc)
-    sensor_state = int(RDK.getParam(SENSOR_IO))
+   
     start_prox_state = int(RDK.getParam(START_PROX))
     encoder_start = 0
     encoder_end = 0
@@ -607,19 +550,13 @@ while True:
         encoder_start = shared['encoder_value']
        # print("ENcoder STart:", encoder_start)
 
-    if sensor_state == 1:
-        encoder_end = shared['encoder_value']
-        #print("ENcoder End:", encoder_end)
-        pass
-        delta_encoder = encoder_end - encoder_start
-       
-        if len(object_queue) > 0:
-            pass
+    
+     
             #print(f"Encoder count: {shared['encoder_value']:.1f}")
         # if delta_encoder > 0:
         #     SCALE = 1954.0 / delta_encoder  # mm per encoder unit, adjust based on your setup
         #     print(f"Calculated SCALE: {SCALE:.2f} mm/unit")
-        #conveyor.Stop()
+        
         #print(f"EncoderNowat X0={encoder_value:.1f}  ")
         # print('Detected timestamp:', obj['timestamp'])
         # print('Timestamp now:', time.time())
@@ -634,7 +571,7 @@ while True:
         #     f"Encoder Now={encoder_now:.1f}  "
         #     f"Encoder at Detection={obj['encoder_at_detection']:.1f}  "
         # )
-        #break
+        
         #while conveyor.Busy():
             #time.sleep(0.01)
 

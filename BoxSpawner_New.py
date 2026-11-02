@@ -16,7 +16,7 @@ RANDOMIZE_ROTATION = True
 ROTATION_MAX = 45  # degrees, maximum rotation along reference Z (+/-)
 
 RANDOMIZE_POSITION = True
-POSITION_MAX = 100  # mm, maximum lateral offset (+/-)
+POSITION_MAX = 0  # mm, maximum lateral offset (+/-)
 
 #---------------------------------------
 # Avoid auto-select
@@ -156,21 +156,22 @@ box_queue = conveyor_frame.Childs()
 def create_boxes():
 
     while True:
-        time.sleep(0.5)
-    
-        # Remove boxes removed from the conveyor, deleted or too far away
-        childs = conveyor_frame.Childs()
-        for box in box_queue:
-            if not box.Valid(True) or box not in childs:
-                if box in box_queue:
-                    box_queue.remove(box)
+        time.sleep(6)
+        if conveyor.Busy():
+           
+            # Remove boxes removed from the conveyor, deleted or too far away
+            childs = conveyor_frame.Childs()
+            for box in box_queue:
+                if not box.Valid(True) or box not in childs:
+                    if box in box_queue:
+                        box_queue.remove(box)
 
-        if not box_queue:
-            box_queue.append(spawn_box())
-            
+            if not box_queue:
+                box_queue.append(spawn_box())
+                
 
-        # Spawn new boxes if space is sufficient
-        if box_queue[-1].Valid(True) and not RDK.Collision(ref_box, box_queue[-1]):
-            box_queue.append(spawn_box())
+            # Spawn new boxes if space is sufficient
+            if box_queue[-1].Valid(True) and not RDK.Collision(ref_box, box_queue[-1]):
+                box_queue.append(spawn_box())
         
        # delete_boxes()

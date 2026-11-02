@@ -87,21 +87,22 @@ print(f'Using conveyor frame: {conveyor_frame.Name()}')
 
 def sensor_ready():
 
-    detection = 0
-    childs = conveyor_frame.Childs()
-    for box in [x for x in childs if x.Type() == robolink.ITEM_TYPE_OBJECT]:
-        if box.Valid(True) and RDK.Collision(sensor, box):
-            detection = 1
-            break
-    
-    RDK.setParam(SENSOR_IO, detection)
+
+        detection = 0
+        childs = conveyor_frame.Childs()
+        for box in [x for x in childs if x.Type() == robolink.ITEM_TYPE_OBJECT]:
+            if box.Valid(True) and RDK.Collision(sensor, box):
+                detection = 1
+                break
+        
+        RDK.setParam(SENSOR_IO, detection)
 
 
-    start_detection = 0
-    childs = conveyor_frame.Childs()
-    for box in [x for x in childs if x.Type() == robolink.ITEM_TYPE_OBJECT]:
-        if box.Valid(True) and RDK.Collision(start_prox, box):
-            start_detection = 1
-            break
-    
-    RDK.setParam(START_PROX, start_detection)
+        start_detection = 0
+        childs = conveyor_frame.Childs()
+        for box in [x for x in childs if x.Type() == robolink.ITEM_TYPE_OBJECT]:
+            if box.Valid(True) and RDK.Collision(start_prox, box):
+                start_detection = 1
+                break
+        
+        RDK.setParam(START_PROX, start_detection)
