@@ -1,0 +1,90 @@
+import cv2
+import numpy as np
+
+# ==========================================
+# CONFIGURATION
+# ==========================================
+MAIN_IMAGE = r'W:\Lucas_R\img2.png'
+OUTPUT_IMAGE = r'W:\Lucas_R\detected_parts_v3.png'
+
+# Expected pixel area range for individual parts on img2
+MIN_PART_AREA = 400   
+MAX_PART_AREA = 2500  
+
+# ==========================================
+# LOAD & PREPROCESS IMAGE
+# ==========================================
+img = cv2.imread(MAIN_IMAGE)
+if img is None:
+    raise Exception("Failed to load main image")
+
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+# Smooth out the fine texture/noise while keeping object boundaries sharp
+blurred = cv2.bilateralFilter(gray, 9, 75, 75)
+
+# ==========================================
+# THRESHOLDING (Isolating the dark parts)
+# ==========================================
+# Since the parts are darker than the background tracks, we invert the threshold
+# Adjust the '115' value slightly if it picks up too much track shadow
+_, thresh = cv2.threshold(blurred, 115, 255, cv2.THRESH_BINARY_INV)
+
+# Clean up the vertical channel lines using a small square morphological opening
+kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+thresh_cleaned = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+
+# ==========================================
+# INNER BOUNDARY MASKING
+# ==========================================
+# Create a mask to ignore any artifacts near the extreme outer edges of the frame
+mask = np.zeros(gray.shape, dtype=np.uint8)
+h_img, w_img = gray.shape
+cv2.rectangle(mask, (int(w_img*0.05), int(h_img*0.05)), (int(w_img*0.95), int(h_img*0.95)), 255, -1)
+thresh_final = cv2.bitwise_and(thresh_cleaned, thresh_cleaned, mask=mask)
+
+# ==========================================
+# CONTOUR ANALYSIS & CLASSIFICATION
+# ==========================================
+contours, _ = cv2.findContours(
+    thresh_final, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+)
+
+part_count = 0
+
+for cnt in contours:
+    area = cv2.contourArea(cnt)
+    
+    # Filter out small noise or massive background segments
+    if not (MIN_PART_AREA <= area <= MAX_PART_AREA):
+        continue
+        
+    x, y, w, h = cv2.boundingRect(cnt)
+    
+    # Eliminate long, skinny vertical line remnants from the tracks
+    aspect_ratio = float(w) / h if h > 0 else 0
+    if aspect_ratio < 0.2 or aspect_ratio > 5.0:
+        continue
+
+    part_count += 1
+    
+    # Draw a bounding box around each detected component
+    cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    cv2.putText(
+        img, f"ID: {part_count}", (x, y - 5),
+        cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 255, 0), 1
+    )
+
+# ==========================================
+# OUTPUT METRICS
+# ==========================================
+print("\n========================================")
+print("     SILHOUETTE ISOLATION SUMMARY")
+print("========================================")
+print(f"Total Parts Successfully Detected: {part_count}")
+print("========================================")
+
+cv2.imwrite(OUTPUT_IMAGE, img)
+cv2.imshow("Detected Parts", img)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
