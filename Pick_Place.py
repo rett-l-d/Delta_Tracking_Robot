@@ -4,6 +4,8 @@ from robodk import robomath
 from robodk.robolink import ITEM_TYPE_FRAME, ITEM_TYPE_ROBOT_AXES, Robolink, ITEM_TYPE_OBJECT, ITEM_TYPE_TOOL, ITEM_TYPE_ROBOT
 import BoxSpawner_New
 import ConveyorReset
+import Scara_Sim
+import openCV
 import robolink
 import sensorReady
 import VisionOpenCV
@@ -77,19 +79,19 @@ print(f'Using conveyor frame: {conveyor_frame.Name()}')
 
 # -----------------------------
 # Get the robot
-robot_name = "Fanuc M-1iA/0.5SL"
-robot_names = RDK.ItemList(filter=ITEM_TYPE_ROBOT, list_names=True)
-print("Robot items in station:", robot_names)
+# robot_name = "Fanuc M-1iA/0.5SL"
+# robot_names = RDK.ItemList(filter=ITEM_TYPE_ROBOT, list_names=True)
+# print("Robot items in station:", robot_names)
 
-if robot_name not in robot_names:
-    raise RuntimeError(f"Robot item not found. Choose its exact name from: {robot_names}")
+# if robot_name not in robot_names:
+#     raise RuntimeError(f"Robot item not found. Choose its exact name from: {robot_names}")
 
-robot = RDK.Item(robot_name, ITEM_TYPE_ROBOT)
-print("Using robot:", robot.Name(), "type:", robot.Type())
+# robot = RDK.Item(robot_name, ITEM_TYPE_ROBOT)
+# print("Using robot:", robot.Name(), "type:", robot.Type())
 
-tool = robot.getLink(ITEM_TYPE_TOOL)
-if not tool.Valid():
-    raise RuntimeError("No tool is linked to this robot")
+# tool = robot.getLink(ITEM_TYPE_TOOL)
+# if not tool.Valid():
+#     raise RuntimeError("No tool is linked to this robot")
 
 
 
@@ -460,20 +462,22 @@ def delete_boxes_end():
 delete_boxes()
 #sensorReady.sensor_ready()
 conveyor.setJoints(conveyor_min)
-robot.MoveJ(Joints_home)
+#robot.MoveJ(Joints_home)
 
  #set robot speed
-robot.setSpeed(500, 3000) 
-robot.setAcceleration(5000)
-robot.setRounding(5)
-robot.setRounding(5)
+# robot.setSpeed(500, 3000) 
+# robot.setAcceleration(5000)
+# robot.setRounding(5)
+# robot.setRounding(5)
 
 
 
 shared['encoder_value'] = 0
 
-threading.Thread(target=get_x_prediction, daemon=True).start()
-threading.Thread(target=pick_loop, daemon=True).start()
+#threading.Thread(target=get_x_prediction, daemon=True).start()
+threading.Thread(target=Scara_Sim.move_robot, daemon=True).start()
+threading.Thread(target=openCV.start_camera_detection, daemon=True).start()
+#threading.Thread(target=pick_loop, daemon=True).start()
 threading.Thread(target=calculate_speed, daemon=True).start()
 threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
 # time.sleep(0.5)
@@ -494,11 +498,11 @@ threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
 # time.sleep(0.5)
 #threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
 #threading.Thread(target=sensorReady.sensor_ready, daemon=True).start()
-threading.Thread(
-    target=VisionOpenCV.getOpenCVresults,
-    args=(shared, queue_lock, object_queue),
-    daemon=True
-).start()
+# threading.Thread(
+#     target=VisionOpenCV.getOpenCVresults,
+#     args=(shared, queue_lock, object_queue),
+#     daemon=True
+# ).start()
 
 #BoxSpawner_New.create_boxes()
 dt = 0.01

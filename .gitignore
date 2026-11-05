@@ -1,2 +1,5 @@
 __pycache__/BoxSpawner_New.cpython-314.pyc
 /__pycache__
+*.precompilecache
+*.opt
+*.~u
