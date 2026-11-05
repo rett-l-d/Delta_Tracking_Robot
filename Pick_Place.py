@@ -478,7 +478,7 @@ shared['encoder_value'] = 0
 threading.Thread(target=Scara_Sim.move_robot, daemon=True).start()
 threading.Thread(target=openCV.start_camera_detection, daemon=True).start()
 #threading.Thread(target=pick_loop, daemon=True).start()
-threading.Thread(target=calculate_speed, daemon=True).start()
+#threading.Thread(target=calculate_speed, daemon=True).start()
 threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
 # time.sleep(0.5)
 # threading.Thread(target=BoxSpawner_New.create_boxes, daemon=True).start()
@@ -515,8 +515,6 @@ while True:
     delete_boxes_end()
     #
     sensorReady.sensor_ready()
-    #
-    sensorReady.sensor_ready()
     # spawn every 1 second
     # if time.time() - last_spawn_time >= 2:
     #  BoxSpawner_New.create_boxes()
@@ -527,30 +525,12 @@ while True:
 
 
     #print(f"Encoder value: {encoder_value:.1f}")
-
+    #target = [min(conveyor_max, conveyor.Joints().list()[0] + 99999)]  # this is to avoid lengthy calculations when the target is to far away (as oppose to conveyor.MoveJ(conveyor_max, False))
+  #  conveyor.MoveJ(target, False)
 
    
    
     #lt = VisionOpenCV.getOpenCVresults(lt, encoder_value, queue_lock, object_queue)
-    sensor_state = int(RDK.getParam(SENSOR_IO))
-    #print("Sensor STate:" , sensor_state)
-    if sensor_state == 1:
-        conveyor.Stop()
-        #encoder_end = shared['encoder_value']
-        #break
-        if len(object_queue) > 0:
-            obj= object_queue[0]
-            object_queue.pop(0)
-        #x_now = get_current_x(obj, shared['encoder_value'])
-        #if x_now > 300:
-      
-        time.sleep(3)
-        pass
-        target = [min(conveyor_max, conveyor.Joints().list()[0] + 99999)]  # this is to avoid lengthy calculations when the target is to far away (as oppose to conveyor.MoveJ(conveyor_max, False))
-        conveyor.MoveJ(target, False)
-       
-
-    #           #  print("Object removed")
     sensor_state = int(RDK.getParam(SENSOR_IO))
     #print("Sensor STate:" , sensor_state)
     if sensor_state == 1:
@@ -640,7 +620,7 @@ while True:
             #pick_and_place(box)
 
     # conveyor.MoveJ([conveyor.Joints().list()[0] + 500], False)
-
+       
     elif not conveyor.Busy():
         target = [min(conveyor_max, conveyor.Joints().list()[0] + 99999)]  # this is to avoid lengthy calculations when the target is to far away (as oppose to conveyor.MoveJ(conveyor_max, False))
         conveyor.MoveJ(target, False)

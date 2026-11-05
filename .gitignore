@@ -3,3 +3,6 @@ __pycache__/BoxSpawner_New.cpython-314.pyc
 *.precompilecache
 *.opt
 *.~u
+*.bootinfo
+*.compileinfo
+*.bootinfo_guids
